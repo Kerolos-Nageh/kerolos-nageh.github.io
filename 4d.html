@@ -1,0 +1,502 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Northgate Data Center 4D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: control-room console — 3D stage left, live status rail right, schedule strip along the bottom */
+:root{
+  --bg:#eef1f3; --panel:#ffffff; --panel-2:#f5f7f8; --line:#d6dde2; --fg:#14202a; --muted:#5b6b78;
+  --accent:#d9861c; --accent-ink:#ffffff; --crit:#d23a3a; --ok:#1f8f5f; --sky:#dfe7ec; --ground:#c9c1ac;
+  --gantt-bg:#f5f7f8; --bar:#9fb0bc;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d141a; --panel:#131d25; --panel-2:#18242e; --line:#25343f; --fg:#e4ebf0; --muted:#8a9cab;
+  --accent:#f0a33a; --accent-ink:#1a1206; --crit:#ff5a5a; --ok:#3ccf8e; --sky:#16222c; --ground:#3a3a30;
+  --gantt-bg:#101920; --bar:#4a5c69; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d141a; --panel:#131d25; --panel-2:#18242e; --line:#25343f; --fg:#e4ebf0; --muted:#8a9cab;
+  --accent:#f0a33a; --accent-ink:#1a1206; --crit:#ff5a5a; --ok:#3ccf8e; --sky:#16222c; --ground:#3a3a30;
+  --gantt-bg:#101920; --bar:#4a5c69; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;overflow:hidden}
+.app{height:100%;display:grid;grid-template-rows:auto 1fr auto;padding-left:max(0px,env(safe-area-inset-left,0px));padding-right:max(0px,env(safe-area-inset-right,0px))}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line);background:var(--panel)}
+.brand{display:flex;flex-direction:column;min-width:0}
+.brand h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:22px;letter-spacing:.02em;text-transform:uppercase;line-height:1.05}
+.brand small{color:var(--muted);font-size:12px}
+.date{margin-left:auto;display:flex;gap:16px;align-items:baseline;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.date b{font-size:20px;font-weight:500}
+.date span{color:var(--muted);font-size:12px}
+.main{display:grid;grid-template-columns:1fr 320px;min-height:0}
+.stage{position:relative;min-width:0;min-height:0;overflow:hidden}
+#c{display:block;width:100%;height:100%}
+.toolbar{position:absolute;top:10px;left:10px;right:10px;display:flex;flex-wrap:wrap;gap:6px;pointer-events:none}
+.toolbar .grp{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden;pointer-events:auto}
+.toolbar button{font:500 12px var(--f-body);color:var(--fg);background:transparent;border:0;padding:7px 10px;cursor:pointer;border-right:1px solid var(--line)}
+.toolbar button:last-child{border-right:0}
+.toolbar button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.toolbar button.crit[aria-pressed="true"]{background:var(--crit);color:#fff}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.labels{position:absolute;inset:0;pointer-events:none}
+.lab{position:absolute;transform:translate(-50%,-100%);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:3px 7px;font:500 11px var(--f-body);white-space:nowrap;pointer-events:auto;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.lab b{font-family:var(--f-display);font-size:13px;letter-spacing:.03em;text-transform:uppercase;margin-right:6px}
+.lab i{font-style:normal;color:var(--muted);font-family:var(--f-mono)}
+.note{position:absolute;left:10px;bottom:8px;right:10px;font-size:11px;color:var(--muted);pointer-events:none;text-shadow:0 0 4px var(--sky)}
+.insp{position:absolute;right:10px;top:52px;width:290px;max-width:calc(100% - 20px);max-height:calc(100% - 90px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;box-shadow:0 6px 24px rgba(0,0,0,.18)}
+.insp h3{margin:0 18px 2px 0;font-family:var(--f-display);font-size:18px;letter-spacing:.02em;text-wrap:balance}
+.insp .x{position:absolute;top:8px;right:8px;border:0;background:transparent;color:var(--muted);font-size:18px;cursor:pointer}
+.kv{display:grid;grid-template-columns:86px 1fr;gap:4px 8px;font-size:12px;margin-top:8px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;min-width:0}
+.acts{margin-top:8px;font-size:12px;display:grid;gap:6px}
+.acts div{padding:6px 8px;background:var(--panel-2);border-radius:4px;border-left:3px solid var(--bar)}
+.acts div.c{border-left-color:var(--crit)}
+.acts code{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+aside{border-left:1px solid var(--line);background:var(--panel);overflow:auto;padding-block:14px;padding-inline:16px;display:flex;flex-direction:column;gap:18px;min-width:0}
+aside h2{margin:0 0 8px;font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kpi{background:var(--panel-2);border-radius:6px;padding:8px 10px}
+.kpi b{display:block;font:500 22px var(--f-mono);font-variant-numeric:tabular-nums}
+.kpi span{font-size:11px;color:var(--muted)}
+.kpi.wide{grid-column:1/-1}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.trades{display:grid;gap:2px}
+.trade{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:4px;cursor:pointer;font-size:12px;border:0;background:transparent;color:var(--fg);text-align:left;width:100%}
+.trade:hover{background:var(--panel-2)}
+.trade[aria-pressed="true"]{background:var(--panel-2);outline:1px solid var(--accent)}
+.sw{width:10px;height:10px;border-radius:2px;flex:none}
+.trade em{margin-left:auto;font-style:normal;font-family:var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.areas{display:grid;gap:7px;font-size:12px}
+.arow{display:grid;grid-template-columns:1fr 44px;gap:2px 8px;align-items:center}
+.arow span:last-child{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--muted)}
+.arow .bar{grid-column:1/-1;margin-top:0}
+.wip{display:grid;gap:6px;font-size:12px}
+.wip div{display:grid;grid-template-columns:1fr auto;gap:2px 8px}
+.wip code{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.wip .c code{color:var(--crit)}
+.wip small{grid-column:1/-1;height:3px;background:var(--line);border-radius:2px;overflow:hidden}
+.wip small i{display:block;height:100%;background:var(--accent)}
+footer{border-top:1px solid var(--line);background:var(--panel);padding-block:8px 10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:6px}
+.ctrl button{font:500 12px var(--f-body);background:var(--panel-2);color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:6px 10px;cursor:pointer}
+.ctrl button.play{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);min-width:74px}
+.ctrl select{font:12px var(--f-body);background:var(--panel-2);color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:5px}
+#slider{flex:1;min-width:160px;accent-color:var(--accent)}
+.gwrap{position:relative;overflow-x:auto}
+#gantt{display:block;width:100%;height:150px;background:var(--gantt-bg);border-radius:4px;cursor:pointer}
+@media (max-width:860px){
+  body{overflow:auto}
+  .app{height:auto}
+  .main{grid-template-columns:1fr}
+  .stage{height:62vh;min-height:360px}
+  aside{border-left:0;border-top:1px solid var(--line)}
+  .insp{top:auto;bottom:34px;right:10px;left:10px;width:auto;max-height:50%}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head><body><div class="app">
+  <header>
+    <div class="brand"><h1>Northgate Data Center · 4D</h1><small>2 data halls · 18 MW IT · fictional demo project · Primavera P6 baseline R0 · LOD 350</small></div>
+    <div class="date"><b id="dLbl">—</b><span id="dSub">—</span></div>
+  </header>
+  <div class="main">
+    <div class="stage" id="stage">
+      <canvas id="c" aria-label="3D construction model"></canvas>
+      <div class="labels" id="labels"></div>
+      <div class="toolbar">
+        <div class="grp" role="group" aria-label="Camera">
+          <button id="vSite">Whole site</button><button id="vPlan">Plan</button><button id="vHall">Inside DH1</button><button id="vLab" aria-pressed="true">Labels</button>
+        </div>
+        <div class="grp" role="group" aria-label="View mode">
+          <button data-vm="ext" aria-pressed="true">Exterior</button><button data-vm="xray" aria-pressed="false">X-ray</button><button data-vm="roof" aria-pressed="false">Roof off</button>
+        </div>
+        <div class="grp"><button id="vCrit" class="crit" aria-pressed="false">Critical path</button></div>
+      </div>
+      <div class="insp" id="insp" hidden></div>
+      <div class="note">Fictional demo: geometry is design-intent LOD 350 (located, sized, with connections and supports); schedule is a CPM baseline built for this demo. Click any element to inspect.</div>
+    </div>
+    <aside>
+      <section><h2>Status on date</h2><div class="kpis" id="kpis"></div></section>
+      <section id="critBox" hidden><h2 style="color:var(--crit)">Critical path</h2><div class="wip" id="critList"></div></section>
+      <section><h2>Trades <span style="text-transform:none;letter-spacing:0;font-family:var(--f-body)">· tap to isolate</span></h2><div class="trades" id="trades"></div></section>
+      <section><h2>Areas</h2><div class="areas" id="areas"></div></section>
+      <section><h2>In progress</h2><div class="wip" id="wip"></div></section>
+    </aside>
+  </div>
+  <footer>
+    <div class="ctrl">
+      <button class="play" id="play">▶ Play</button>
+      <select id="speed" aria-label="Playback speed"><option value="7">1 week / s</option><option value="30" selected>1 month / s</option><option value="90">3 months / s</option></select>
+      <button id="jStart">NTP</button><button id="jToday">Data date</button><button id="jEnd">Completion</button>
+      <input type="range" id="slider" min="0" max="500" value="0" step="1" aria-label="Schedule date">
+    </div>
+    <div class="gwrap"><canvas id="gantt" aria-label="Schedule bars by area"></canvas></div>
+  </footer>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>window.__DATA={"d0":"2026-01-05","end":500,"today":294,"order":["SITE","PROC","SHELL","ELEC","YARD","DH1","DH2","ADMIN","CX"],"names":{"SITE":"Site & utilities","PROC":"Procurement (long lead)","SHELL":"Building shell","ELEC":"Electrical rooms & utility","YARD":"Generator & chiller yards","DH1":"Data Hall 1","DH2":"Data Hall 2","ADMIN":"Admin & NOC","CX":"Completion"},"trades":{"MS":"Milestone","GC":"General conditions","SW":"Sitework","UTL":"Site utilities","CON":"Concrete","STL":"Structural steel","ENV":"Precast envelope","ROOF":"Roofing","ARC":"Architectural","PLB":"Plumbing","FP":"Fire protection","MEC":"Mechanical / cooling","ELE":"Electrical / power","ITN":"IT & low voltage","CX":"Commissioning"},"areas":{"SITE":[["Notice to Proceed",0,0,"MS-000",1,1,"MS",0,0,[]],["Mobilization & site office",0,18,"PRE-010",0,0,"GC",40,18,["MS-000"]],["Clearing & grubbing",18,39,"SITE-010",0,0,"SW",40,21,["PRE-010"]],["Mass earthworks & building pad",39,83,"SITE-020",0,0,"SW",40,44,["SITE-010"]],["Storm drainage & detention basin",57,109,"SITE-030",0,0,"UTL",208,52,["SITE-020"]],["Underground water, fire & sewer",75,124,"SITE-040",0,0,"UTL",208,49,["SITE-030"]],["Duct banks \u2014 MV & telecom",83,144,"SITE-050",0,0,"ELE",265,61,["SITE-020"]],["Roads & parking \u2014 base course",124,168,"SITE-060",0,0,"SW",323,44,["SITE-040"]],["Perimeter security fence & gates",142,177,"SITE-070",0,0,"SW",323,35,["SITE-060"]],["Paving \u2014 surface course & striping",294,318,"SITE-080",0,0,"SW",145,24,["SHL-090"]],["Landscaping & site lighting",318,355,"SITE-090",0,0,"SW",145,37,["SITE-080"]]],"PROC":[["Steel shop drawings & approval",0,79,"PRE-020",1,0,"STL",0,79,["MS-000"]],["Precast panel shop drawings & casting",0,158,"PRE-040",0,0,"ENV",75,158,["MS-000"]],["Switchgear & UPS submittals / manufacture",0,315,"PRE-050",0,0,"ELE",50,315,["MS-000"]],["Generators manufacture & delivery",0,350,"PRE-060",0,0,"ELE",76,350,["MS-000"]],["Chillers & CRAH units manufacture",0,298,"PRE-070",0,0,"MEC",66,298,["MS-000"]],["MV transformers manufacture",0,280,"PRE-080",0,0,"ELE",129,280,["MS-000"]],["Steel fabrication & delivery",79,184,"PRE-030",1,0,"STL",0,105,["PRE-020"]]],"SHELL":[["Foundations \u2014 column footings & grade beams",83,144,"SHL-010",0,0,"CON",40,61,["SITE-020"]],["Under-slab plumbing & electrical conduit",109,135,"SHL-020",0,0,"PLB",142,26,["SHL-010"]],["Slab on grade \u2014 data halls (8\" reinforced)",144,188,"SHL-030",0,0,"CON",133,44,["SHL-020","SHL-010"]],["Steel erection \u2014 columns & girders",184,236,"SHL-040",1,0,"STL",0,52,["SHL-010","PRE-030"]],["Steel erection \u2014 roof joists, deck & bracing",205,249,"SHL-050",1,0,"STL",0,44,["SHL-040"]],["Precast insulated wall panels",210,271,"SHL-060",0,0,"ENV",23,61,["SHL-040","PRE-040"]],["Roofing \u2014 TPO membrane & insulation",249,301,"SHL-070",1,0,"ROOF",0,52,["SHL-050"]],["Roof drains, curbs & parapet flashing",270,294,"SHL-080",1,0,"ROOF",0,24,["SHL-070"]],["Overhead doors & loading dock",271,295,"SHL-100",0,0,"ARC",205,24,["SHL-060"]],["Building dried-in",294,294,"SHL-090",1,1,"MS",0,0,["SHL-060","SHL-080"]]],"ELEC":[["MV substation pad & transformers set",280,315,"ELE-010",0,0,"ELE",129,35,["SITE-050","PRE-080"]],["Electrical rooms \u2014 CMU walls & fire rating",294,338,"ELE-020",0,0,"ARC",27,44,["SHL-090","SHL-030"]],["Switchgear lineups set & landed",338,382,"ELE-030",0,0,"ELE",27,44,["ELE-020","PRE-050"]],["Feeders \u2014 MV & LV cable pulls",347,399,"ELE-050",0,0,"ELE",45,52,["ELE-030"]],["UPS modules & battery cabinets set",356,391,"ELE-040",0,0,"ELE",109,35,["ELE-030"]],["Permanent power energized",399,399,"ELE-060",0,1,"MS",45,0,["ELE-010","ELE-050"]]],"YARD":[["Generator yard slab & fuel tank pads",83,115,"YRD-010",0,0,"CON",311,32,["SITE-020"]],["Chiller yard pads & pipe racks",124,156,"YRD-030",0,0,"CON",208,32,["SITE-040"]],["Air-cooled chillers set (8 nos)",298,319,"YRD-040",0,0,"MEC",66,21,["YRD-030","PRE-070"]],["CHW headers yard-to-building",307,351,"YRD-050",0,0,"MEC",66,44,["YRD-040","SHL-090"]],["Generators set (12 \u00d7 2.5 MW)",350,376,"YRD-020",0,0,"ELE",76,26,["YRD-010","PRE-060"]],["Generator paralleling & load bank test",399,417,"YRD-060",0,0,"CX",53,18,["YRD-020","ELE-060"]]],"DH1":[["DH1 \u2014 epoxy floor sealer & layout",294,308,"DH1-010",0,0,"ARC",52,14,["SHL-090","SHL-030"]],["DH1 \u2014 overhead structural support grid",308,334,"DH1-020",0,0,"STL",52,26,["DH1-010"]],["DH1 \u2014 pre-action sprinkler mains & branches",322,366,"DH1-030",0,0,"FP",52,44,["DH1-020"]],["DH1 \u2014 CHW piping to CRAH gallery",325,377,"DH1-040",0,0,"MEC",66,52,["DH1-020","YRD-050"]],["DH1 \u2014 cable tray & busway",334,378,"DH1-060",0,0,"ELE",57,44,["DH1-020"]],["DH1 \u2014 CRAH units set & piped (10 nos)",343,378,"DH1-050",0,0,"MEC",66,35,["DH1-040","PRE-070"]],["DH1 \u2014 fiber backbone & ladder rack",355,390,"DH1-080",0,0,"ITN",80,35,["DH1-060"]],["DH1 \u2014 fire alarm & VESDA",366,392,"DH1-110",0,0,"FP",52,26,["DH1-030"]],["DH1 \u2014 hot aisle containment",378,410,"DH1-090",0,0,"ARC",57,32,["DH1-060"]],["DH1 \u2014 PDUs set & feeders",382,417,"DH1-070",0,0,"ELE",27,35,["DH1-060","ELE-030"]],["DH1 \u2014 server racks set (shell racks)",387,413,"DH1-100",0,0,"ITN",57,26,["DH1-090","DH1-030"]],["DH1 \u2014 L3 functional tests",417,443,"DH1-120",0,0,"CX",27,26,["DH1-050","DH1-070","DH1-110","ELE-060"]],["DH1 \u2014 L4 integrated systems test",443,461,"DH1-130",0,0,"CX",27,18,["DH1-120","YRD-060","DH1-100","DH1-080"]],["DH1 \u2014 L5 IST & ready for service",461,473,"DH1-140",0,0,"CX",27,12,["DH1-130"]]],"DH2":[["DH2 \u2014 epoxy floor sealer & layout",346,360,"DH2-010",1,0,"ARC",0,14,["SHL-090","SHL-030"]],["DH2 \u2014 overhead structural support grid",360,386,"DH2-020",1,0,"STL",0,26,["DH2-010"]],["DH2 \u2014 CHW piping to CRAH gallery",369,421,"DH2-040",0,0,"MEC",22,52,["DH2-020","YRD-050"]],["DH2 \u2014 pre-action sprinkler mains & branches",374,418,"DH2-030",1,0,"FP",0,44,["DH2-020"]],["DH2 \u2014 cable tray & busway",386,430,"DH2-060",0,0,"ELE",5,44,["DH2-020"]],["DH2 \u2014 CRAH units set & piped (10 nos)",387,422,"DH2-050",0,0,"MEC",22,35,["DH2-040","PRE-070"]],["DH2 \u2014 PDUs set & feeders",404,439,"DH2-070",0,0,"ELE",5,35,["DH2-060","ELE-030"]],["DH2 \u2014 fiber backbone & ladder rack",407,442,"DH2-080",0,0,"ITN",28,35,["DH2-060"]],["DH2 \u2014 fire alarm & VESDA",418,444,"DH2-110",1,0,"FP",0,26,["DH2-030"]],["DH2 \u2014 hot aisle containment",430,462,"DH2-090",0,0,"ARC",5,32,["DH2-060"]],["DH2 \u2014 server racks set (shell racks)",439,465,"DH2-100",0,0,"ITN",5,26,["DH2-090","DH2-030"]],["DH2 \u2014 L3 functional tests",444,470,"DH2-120",1,0,"CX",0,26,["DH2-050","DH2-070","DH2-110","ELE-060"]],["DH2 \u2014 L4 integrated systems test",470,488,"DH2-130",1,0,"CX",0,18,["DH2-120","YRD-060","DH2-100","DH2-080"]],["DH2 \u2014 L5 IST & ready for service",488,500,"DH2-140",1,0,"CX",0,12,["DH2-130"]]],"ADMIN":[["Admin block \u2014 framing & drywall",294,346,"ADM-010",0,0,"ARC",91,52,["SHL-090"]],["Admin block \u2014 MEP rough-in",312,356,"ADM-020",0,0,"MEC",91,44,["ADM-010"]],["Admin block \u2014 finishes & furniture",356,408,"ADM-030",0,0,"ARC",91,52,["ADM-020"]],["NOC / security operations fit-out",374,409,"ADM-040",0,0,"ITN",91,35,["ADM-030"]]],"CX":[["DH1 ready for service",473,473,"MS-900",0,1,"MS",27,0,["DH1-140"]],["DH2 ready for service",500,500,"MS-910",1,1,"MS",0,0,["DH2-140"]],["Substantial completion",500,500,"MS-990",1,1,"MS",0,0,["MS-900","MS-910","ADM-040","SITE-090","SHL-100"]]]},"ms":[["Notice to Proceed",0,"MS-000"],["Building dried-in",294,"SHL-090"],["Permanent power energized",399,"ELE-060"],["DH1 ready for service",473,"MS-900"],["DH2 ready for service",500,"MS-910"],["Substantial completion",500,"MS-990"]],"project":"Northgate Demo Data Center","rev":"Baseline R0 \u00b7 demo"};</script>
+<script>
+(function(){
+'use strict';
+const DATA = window.__DATA;
+const D0 = new Date(DATA.d0 + 'T00:00:00');
+const END = DATA.end, TODAY = DATA.today;
+const ACT = {};
+DATA.order.forEach(ar => DATA.areas[ar].forEach(r => {
+  ACT[r[3]] = {name:r[0], s:r[1], e:r[2], code:r[3], crit:!!r[4], ms:!!r[5], trade:r[6], tf:r[7], dur:r[8], preds:r[9], area:ar};
+}));
+const TC = {MS:'#7d8a96',GC:'#8c7a5b',SW:'#a07a45',UTL:'#3f7fb0',CON:'#9aa3a8',STL:'#c2552d',ENV:'#b9b09d',ROOF:'#6f7c86',
+  ARC:'#8e6fc0',PLB:'#2f9e8f',FP:'#d23a3a',MEC:'#2a8fd6',ELE:'#e0a400',ITN:'#e2711d',CX:'#1fae6a'};
+const clamp = (v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+function fr(code,T,sub){const a=ACT[code]; if(!a) return 0; let s=a.s,e=a.e;
+  if(sub){s=a.s+(a.e-a.s)*sub[0]; e=a.s+(a.e-a.s)*sub[1];}
+  if(a.ms||e<=s) return T>=s?1:0; return clamp((T-s)/(e-s));}
+const fmt = d => d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+const dOf = n => new Date(D0.getTime()+n*864e5);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ---------- renderer / scene ---------- */
+const canvas = document.getElementById('c'), stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.localClippingEnabled = true;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40,1,2,6000);
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.maxPolarAngle = Math.PI*0.495;
+scene.add(new THREE.HemisphereLight(0xdfeaf2,0x5a5240,0.75));
+const sun = new THREE.DirectionalLight(0xffffff,0.85);
+sun.position.set(-380,520,300); sun.castShadow = true;
+Object.assign(sun.shadow.camera,{left:-520,right:520,top:420,bottom:-420,near:50,far:1500});
+sun.shadow.mapSize.set(2048,2048); sun.shadow.bias=-0.0005; scene.add(sun);
+function applyTheme(){scene.background = new THREE.Color(css('--sky')); groundMat.color.set(css('--ground')); drawGantt();}
+
+/* ---------- geometry helpers ---------- */
+function merge(geos){let n=0; geos.forEach(g=>n+=g.attributes.position.count);
+  const p=new Float32Array(n*3), q=new Float32Array(n*3); let o=0;
+  geos.forEach(g=>{p.set(g.attributes.position.array,o*3); q.set(g.attributes.normal.array,o*3); o+=g.attributes.position.count; g.dispose();});
+  const G=new THREE.BufferGeometry(); G.setAttribute('position',new THREE.BufferAttribute(p,3)); G.setAttribute('normal',new THREE.BufferAttribute(q,3)); return G;}
+function box(w,h,d,x,y,z,ry,rz){const g=new THREE.BoxGeometry(w,h,d).toNonIndexed(); g.translate(0,h/2,0);
+  if(rz) g.rotateZ(rz); if(ry) g.rotateY(ry); g.translate(x,y,z); return g;}
+function cyl(r,len,x,y,z,ax){const g=new THREE.CylinderGeometry(r,r,len,10,1).toNonIndexed();
+  if(ax==='x') g.rotateZ(Math.PI/2); else if(ax==='z') g.rotateX(Math.PI/2); g.translate(x,y,z); return g;}
+function mat(c,o={}){return new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.82,metalness:.08},o));}
+function MB(list,c,o){const m=new THREE.Mesh(merge(list.map(b=>box(...b))),mat(c,o)); m.castShadow=m.receiveShadow=true; scene.add(m); return m;}
+function MP(list,c){const m=new THREE.Mesh(merge(list.map(b=>cyl(...b))),mat(c,{metalness:.35,roughness:.5})); m.castShadow=true; scene.add(m); return m;}
+function INST(geo,c,pos,o){const m=new THREE.InstancedMesh(geo,mat(c,o),pos.length); const M=new THREE.Matrix4(), Q=new THREE.Quaternion(), S=new THREE.Vector3(1,1,1);
+  pos.forEach((p,i)=>{Q.setFromAxisAngle(new THREE.Vector3(0,1,0),p[3]||0); M.compose(new THREE.Vector3(p[0],p[1],p[2]),Q,S); m.setMatrixAt(i,M);});
+  m.castShadow=m.receiveShadow=true; m.userData.pos=pos; scene.add(m); return m;}
+function geoBox(w,h,d){const g=new THREE.BoxGeometry(w,h,d); g.translate(0,h/2,0); return g;}
+
+/* ---------- element registry ---------- */
+const EL=[];
+function el(obj,codes,o={}){codes=[].concat(codes); const a=ACT[codes[0]];
+  const r=Object.assign({obj,codes,mode:'on',zone:'site',trade:a?a.trade:'MS',name:'',loc:'',size:'',sheet:'Demo model'},o);
+  r.mats=[obj.material]; r.c0=obj.material.color.clone(); r.N=obj.isInstancedMesh?obj.count:0;
+  if(['x','y','z','-x','-z'].includes(r.mode)){obj.geometry.computeBoundingBox(); r.bb=obj.geometry.boundingBox.clone();
+    r.plane=new THREE.Plane(new THREE.Vector3(),0); obj.material.clippingPlanes=[r.plane];}
+  if(r.st) r.st=r.st.map(([c,col])=>[c,new THREE.Color(col)]);
+  if(r.glow) r.gc=new THREE.Color(r.glowCol||'#7ff0c0');
+  r.crit=codes.some(c=>ACT[c]&&ACT[c].crit);
+  obj.userData.rec=r; EL.push(r); return r;}
+
+let critMode=false, iso=null, vmode='ext', T=TODAY;
+const RED=new THREE.Color('#e03a3a'), BLACK=new THREE.Color(0,0,0), tmpC=new THREE.Color();
+function applyEL(T){
+  for(const r of EL){const o=r.obj, m=o.material; let f=fr(r.codes[0],T,r.subf);
+    if(r.until && fr(r.until,T)>=1){o.visible=false; continue;}
+    let vis=f>0;
+    if(r.mode==='remove'){o.count=Math.max(0,r.N-Math.round(f*r.N)); vis=o.count>0;}
+    else if(r.mode==='count'){o.count=Math.ceil(f*r.N); vis=o.count>0;}
+    else if(r.plane){const b=r.bb, ax=r.mode.replace('-',''), neg=r.mode[0]==='-';
+      const lo=b.min[ax], hi=b.max[ax], v=neg? hi-(hi-lo)*f : lo+(hi-lo)*f;
+      r.plane.normal.set(ax==='x'?(neg?1:-1):0, ax==='y'?-1:0, ax==='z'?(neg?1:-1):0); r.plane.constant= neg? -v : v;}
+    if(vmode==='roof' && r.zone==='roof') vis=false;
+    o.visible=vis; if(!vis) continue;
+    // colour stages
+    tmpC.copy(r.c0); if(r.st) for(const [c,col] of r.st){const g=fr(c,T); if(g>0) tmpC.lerp(col,g<1?0.35+0.65*g:1);}
+    let em=BLACK, ei=0; const active=r.codes.some(c=>{const g=fr(c,T,r.subf); return g>0&&g<1;}) || (r.st&&r.st.some(([c])=>{const g=fr(c,T);return g>0&&g<1;}));
+    if(active){em=new THREE.Color(TC[r.trade]); ei=r.zone==='int'?0.12:0.28;}
+    if(r.glow && fr(r.glow,T)>=1){em=r.gc; ei=r.gi||0.8;}
+    let ghost=false;
+    if(critMode){ if(r.crit){tmpC.lerp(RED,0.75); if(active){em=RED;ei=0.6;}} else ghost=true; }
+    if(iso && r.trade!==iso) ghost=true;
+    if(vmode==='xray' && (r.zone==='skin'||r.zone==='roof')) ghost=true;
+    m.color.copy(tmpC); m.emissive.copy(em); m.emissiveIntensity=ei;
+    const op = ghost?0.07 : (r.mode==='fade'? Math.max(.25,f):1);
+    m.transparent = op<1; m.opacity=op; m.depthWrite=op>=1; o.castShadow=!ghost&&r.zone!=='int';
+    o.userData.ghost=ghost;
+  }
+}
+
+/* ---------- ground & context ---------- */
+const groundMat = mat('#c9c1ac',{roughness:1});
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(2600,2000),groundMat); ground.rotation.x=-Math.PI/2; ground.position.y=-0.05; ground.receiveShadow=true; scene.add(ground);
+// site pad stages: cleared -> graded
+const pad = new THREE.Mesh(merge([box(800,0.2,560,-20,0,0)]),mat('#6f7d4a',{roughness:1})); pad.receiveShadow=true; scene.add(pad);
+el(pad,'SITE-010',{mode:'on',name:'Site pad (870 × 560 ft)',loc:'Site',st:[['SITE-010','#8b7c5c'],['SITE-020','#b9a985'],['SITE-090','#7f9a55']]});
+// woods: context trees always + site trees removed progressively
+function treeGeo(){const a=new THREE.ConeGeometry(9,26,7); a.translate(0,21,0); const b=new THREE.CylinderGeometry(1.2,1.6,9,6); b.translate(0,4.5,0);
+  return merge([a.toNonIndexed(),b.toNonIndexed()]);}
+const TG=treeGeo(); const rnd=(()=>{let s=7;return()=>(s=(s*16807)%2147483647)/2147483647;})();
+const ctx=[],siteT=[];
+for(let i=0;i<900;i++){const x=-1100+rnd()*2200, z=-900+rnd()*1800; const inSite=x>-420&&x<380&&z>-280&&z<280;
+  if(inSite) siteT.push([x,0,z,rnd()*6]); else if(Math.abs(x)>470||Math.abs(z)>330) ctx.push([x,0,z,rnd()*6]);}
+siteT.sort((a,b)=>a[0]-b[0]);
+INST(TG,'#3f5a35',ctx);
+el(INST(TG,'#46653a',siteT),'SITE-010',{mode:'remove',name:'Existing woods (cleared)',loc:'Site',sheet:'C-100 demo clearing limits'});
+// approach road outside site (context)
+MB([[40,0.3,700,-340,0,-640]],'#4b4f52');
+
+/* ---------- SITE ---------- */
+el(INST(geoBox(32,9,10),'#d8d2c4',[[-360,0,-235,0],[-360,0,-220,0]]),'PRE-010',{mode:'on',until:'SITE-080',name:'Site offices (2 trailers)',loc:'Laydown area',size:'32 × 10 ft each'});
+// detention basin
+el(MB([[90,0.5,90,-345,0.05,195]],'#5c4e37'),'SITE-030',{mode:'fade',name:'Detention basin (excavation)',loc:'NW corner',st:[['SITE-030','#3c6d86']]});
+// underground utilities
+el(MP([[1.2,330,-80,1.2,232,'x'],[1.2,120,85,1.2,175,'z'],[0.9,240,-270,1.2,-20,'z'],[1,140,-330,1.2,150,'x']],'#3f7fb0'),'SITE-040',{mode:'x',name:'Water, fire & sanitary mains (DIP / PVC)',loc:'Site',size:'8"–12" mains'});
+el(MB([[6,1,170,295,0,-105],[100,1,6,245,0,-122],[6,1,40,170,0,-140]],'#c0392b'),'SITE-050',{mode:'x',name:'MV & telecom duct banks (encased)',loc:'Substation to building',size:'4×6" PVC, red concrete'});
+// roads ring + parking
+const R=[[24,0.4,435,-262,0,-2],[24,0.4,435,262,0,-2],[548,0.4,24,0,0,-217],[548,0.4,24,0,0,213],[24,0.4,70,-340,0,-255],[110,0.4,200,-330,0,0]];
+el(MB(R,'#8f8574'),'SITE-060',{mode:'x',name:'Roads & parking',loc:'Site',st:[['SITE-080','#3d4245']],size:'24 ft lanes, 160 stalls'});
+const stripes=[]; for(let i=0;i<20;i++){stripes.push([0.5,0.05,16,-380+i*5.5,0.42,-60]);stripes.push([0.5,0.05,16,-380+i*5.5,0.42,60]);}
+el(MB(stripes,'#f2f2f2'),'SITE-080',{mode:'x',name:'Parking striping',loc:'Parking',subf:[0.6,1]});
+// fence
+const posts=[]; const per=[[-420,-280,380,-280],[380,-280,380,280],[380,280,-420,280],[-420,280,-420,-280]];
+per.forEach(([x1,z1,x2,z2])=>{const L=Math.hypot(x2-x1,z2-z1),n=Math.floor(L/20); for(let i=0;i<n;i++){const t=i/n; posts.push([x1+(x2-x1)*t,0,z1+(z2-z1)*t,0]);}});
+el(INST(geoBox(0.6,8,0.6),'#555c61',posts),'SITE-070',{mode:'count',name:'Security fence posts (8 ft, anti-climb)',loc:'Perimeter',size:'20 ft centres'});
+el(MB(per.map(([x1,z1,x2,z2])=>[Math.abs(x2-x1)||0.3,7.5,Math.abs(z2-z1)||0.3,(x1+x2)/2,0,(z1+z2)/2]),'#8a9298',{transparent:true,opacity:.55}),'SITE-070',{mode:'x',name:'Fence mesh panels',loc:'Perimeter'});
+// landscaping + lights
+const lt=[]; for(let i=0;i<40;i++) lt.push([-400+i*20,0,262+(i%2)*6,0]);
+for(let i=0;i<18;i++) lt.push([-410,0,-250+i*28,0]);
+el(INST(TG,'#6a8f4a',lt),'SITE-090',{mode:'count',name:'Landscape trees',loc:'Site edges'});
+const poles=[]; for(let i=0;i<14;i++) poles.push([-250+i*40,0,-232,0]); for(let i=0;i<14;i++) poles.push([-250+i*40,0,230,0]);
+el(INST(geoBox(1,26,1),'#666d72',poles),'SITE-090',{mode:'count',name:'Site light poles (LED, 25 ft)',loc:'Ring road',glow:'MS-990',glowCol:'#fff2c0'});
+
+/* ---------- building constants ---------- */
+const X0=-150,X1=210,Z0=-120,Z1=120,H=36;
+const gx=[],gz=[]; for(let x=X0;x<=X1;x+=30) gx.push(x); for(let z=Z0;z<=Z1;z+=30) gz.push(z);
+const cols=[]; gx.forEach(x=>gz.forEach(z=>cols.push([x,0,z,0])));
+// foundations
+el(INST(geoBox(7,3,7),'#a7a9a6',cols.map(c=>[c[0],-1,c[2],0])),'SHL-010',{mode:'count',zone:'base',name:'Spread footing + pier (7×7×3 ft)',loc:'Column grid 30×30 ft',size:'f\'c 4,000 psi, #7 bars'});
+const gb=[]; gz.forEach(z=>gb.push([X1-X0,2,1.5,(X0+X1)/2,-0.5,z])); gx.forEach(x=>gb.push([1.5,2,Z1-Z0,x,-0.5,0]));
+el(MB(gb,'#9da19e'),'SHL-010',{mode:'x',zone:'base',subf:[0.4,1],name:'Grade beams',loc:'Perimeter & grid lines',size:'18 × 24 in'});
+el(MP([[0.5,300,0,0.3,-90,'x'],[0.5,300,0,0.3,-75,'x'],[0.4,240,-60,0.3,0,'z'],[0.4,240,60,0.3,0,'z']],'#2f9e8f'),'SHL-020',{mode:'x',zone:'base',name:'Under-slab sanitary & conduit',loc:'Below slab'});
+el(MB([[X1-X0,0.67,Z1-Z0,(X0+X1)/2,0,0]],'#b8bbb8'),'SHL-030',{mode:'x',zone:'base',name:'Slab on grade — 8" reinforced, sealed',loc:'Data halls & spine',size:'86,400 sf, FF50/FL35'});
+// steel: columns + base plates + girders
+const SC='#c2552d';
+el(INST(geoBox(1.2,H,1.2),SC,cols.map(c=>[c[0],0.67,c[2],0])),'SHL-040',{mode:'count',subf:[0,0.5],zone:'l1',name:'Steel column W14×90',loc:'Grid 30 ft',size:'with 1¼" base plate, 4 anchor rods',sheet:'S-201 demo framing'});
+el(INST(geoBox(2.2,0.15,2.2),'#7b8288',cols.map(c=>[c[0],0.67,c[2],0])),'SHL-040',{mode:'count',subf:[0,0.5],zone:'l1',name:'Column base plate 26×26×1¼ in + grout',loc:'Every column',size:'4 × ¾" anchor rods'});
+const gir=[]; gz.forEach(z=>gir.push([X1-X0,2.2,0.8,(X0+X1)/2,H-1.6,z]));
+el(MB(gir,SC),'SHL-040',{mode:'x',subf:[0.4,1],zone:'roof',name:'Roof girders W24×76',loc:'E–W grid lines',sheet:'S-201 demo framing'});
+const joi=[]; for(let x=X0;x<X1;x+=6) joi.push([0.5,1.8,Z1-Z0,x+3,H-1.4,0]);
+el(MB(joi,'#b4643f'),'SHL-050',{mode:'x',zone:'roof',name:'Open-web steel joists 28K8 @ 6 ft',loc:'Roof',sheet:'S-301 demo roof framing'});
+const brc=[]; [Z0,Z1].forEach(z=>[-120,60,180].forEach(x=>{const L=Math.hypot(30,H); brc.push([L,0.5,0.5,x+15,H/2-0.25,z,0,Math.atan2(H,30)]); brc.push([L,0.5,0.5,x+15,H/2-0.25,z,0,-Math.atan2(H,30)]);}));
+// rotate around z then translate: box built from y=0 so shift
+el(new THREE.Mesh(merge(brc.map(b=>{const g=new THREE.BoxGeometry(b[0],b[1],b[2]).toNonIndexed(); g.rotateZ(b[7]); g.translate(b[3],H/2,b[5]); return g;})),mat('#9c4426')),'SHL-050',{mode:'fade',zone:'l1',name:'X-bracing HSS 6×6 (wind & seismic)',loc:'N & S walls, 3 bays each',size:'gusset plate connections'}).obj.castShadow=true; scene.add(EL[EL.length-1].obj);
+el(MB([[X1-X0,0.25,Z1-Z0,(X0+X1)/2,H,0]],'#8c949a'),'SHL-050',{mode:'x',zone:'roof',subf:[0.3,1],name:'Roof deck 1½" type B, 20 ga',loc:'Roof'});
+// precast panels around perimeter
+const pan=[]; const PW=10;
+for(let x=X0;x<X1;x+=PW) pan.push([x+PW/2,0,Z0-0.6,0]);
+for(let z=Z0;z<Z1;z+=PW) pan.push([X1+0.6,0,z+PW/2,Math.PI/2]);
+for(let x=X1;x>X0;x-=PW) pan.push([x-PW/2,0,Z1+0.6,0]);
+for(let z=Z1;z>Z0;z-=PW) pan.push([X0-0.6,0,z-PW/2,Math.PI/2]);
+el(INST(geoBox(PW-0.15,H+3,1.2),'#d6d0c3',pan),'SHL-060',{mode:'count',zone:'skin',name:'Precast insulated sandwich panel',loc:'Perimeter',size:'10 × 39 ft, 3-2-3 in, R-16',sheet:'A-401 demo elevations'});
+el(MB([[X1-X0,0.6,Z1-Z0,(X0+X1)/2,H+0.25,0]],'#eef0ee'),'SHL-070',{mode:'x',zone:'roof',name:'TPO roof membrane 60 mil + 4" polyiso',loc:'Roof',size:'86,400 sf, R-30'});
+const curbs=[]; for(let i=0;i<12;i++) curbs.push([4,2,4,X0+30+i*14,H+0.85,100]); for(let i=0;i<8;i++) curbs.push([1.5,0.8,1.5,X0+20+i*45,H+0.85,-20]);
+el(MB(curbs,'#aeb5ba'),'SHL-080',{mode:'fade',zone:'roof',name:'Roof curbs, drains & relief vents',loc:'Roof'});
+el(INST(geoBox(14,16,0.6),'#5f6b74',[[X1+1,0,-20,Math.PI/2],[X1+1,0,0,Math.PI/2],[X1+1,0,20,Math.PI/2]]),'SHL-100',{mode:'count',zone:'skin',name:'Overhead sectional door 14×16 ft',loc:'Loading dock, east',size:'insulated, motor operated'});
+
+/* ---------- ELECTRICAL ROOMS & SUBSTATION ---------- */
+el(MB([[70,0.8,90,295,0,-105]],'#a5a8a4'),'ELE-010',{mode:'fade',name:'Substation pad',loc:'East yard',subf:[0,0.3]});
+el(INST(geoBox(14,13,10),'#7c8b6a',[[275,0.8,-135,0],[275,0.8,-115,0],[275,0.8,-95,0],[275,0.8,-75,0]]),'ELE-010',{mode:'count',subf:[0.3,1],name:'MV transformer 34.5 kV / 480 V, 3 MVA',loc:'Substation',size:'ONAN, oil-filled'});
+const cmu=[[300,H,1,0,0.67,-60],[1,H,60,-75,0.67,-90],[1,H,60,0,0.67,-90],[1,H,60,75,0.67,-90],[300,H,1,0,0.67,80],[1,H,140,0,0.67,10]];
+el(MB(cmu,'#b9b3a6'),'ELE-020',{mode:'y',zone:'l1',name:'2-hr CMU walls — electrical rooms & hall separation',loc:'South spine, gallery, DH1/DH2',size:'8" CMU, grouted'});
+const swg=[]; [-112,-37,37,112].forEach(x=>swg.push([x,0.67,-112,0]));
+el(INST(geoBox(48,7.5,5),'#d7dadd',swg),'ELE-030',{mode:'count',zone:'int',name:'480 V switchgear lineup (8 sections)',loc:'Electrical rooms 1–4',size:'4,000 A main, draw-out breakers',glow:'ELE-060',glowCol:'#ffe680'});
+const ups=[],bat=[]; [-112,-37,37,112].forEach(x=>{for(let i=0;i<6;i++){ups.push([x-24+i*8,0.67,-96,0]);} for(let i=0;i<10;i++){bat.push([x-27+i*6,0.67,-80,0]);}});
+el(INST(geoBox(6,7,3.5),'#e6e8ea',ups),'ELE-040',{mode:'count',zone:'int',name:'UPS module 500 kW',loc:'Electrical rooms',size:'N+1 per hall'});
+el(INST(geoBox(4.5,6.5,2.8),'#454c52',bat),'ELE-040',{mode:'count',zone:'int',name:'Li-ion battery cabinet',loc:'Electrical rooms',size:'5 min at full load'});
+el(MB([[300,0.5,2,0,30,-105],[300,0.5,2,0,30,-88],[2,0.5,40,-150+2,30,-100]],'#d2a637'),'ELE-050',{mode:'x',zone:'int',name:'Feeder cable tray 36" (MV & LV)',loc:'Electrical rooms',size:'trapeze hangers @ 8 ft'});
+
+/* ---------- YARDS ---------- */
+el(MB([[320,1,70,0,0,-175]],'#a9aca8'),'YRD-010',{mode:'x',name:'Generator yard slab + fuel tank pads',loc:'South yard'});
+const gens=[]; for(let i=0;i<12;i++) gens.push([-137+i*25,1,-175,0]);
+el(INST(geoBox(10,12,36),'#e9e7df',gens),'YRD-020',{mode:'count',name:'Diesel generator 2.5 MW, sub-base tank',loc:'Generator yard',size:'Tier 4, 24 h fuel, sound-attenuated',glow:'YRD-060',glowCol:'#a7ffd4'});
+el(INST(geoBox(1.4,6,1.4),'#3a3f43',gens.map(g=>[g[0],13,g[2]-12,0])),'YRD-020',{mode:'count',name:'Exhaust stack + silencer',loc:'Generator yard'});
+el(MB([[320,1,60,0,0,175],[300,0.8,4,0,10,148],[4,0.8,30,-130,10,135]],'#a9aca8'),'YRD-030',{mode:'x',name:'Chiller pads & steel pipe rack',loc:'North yard'});
+const chl=[]; for(let i=0;i<8;i++) chl.push([-130+i*37,1,175,0]);
+el(INST(geoBox(10,9,34),'#cfd6dc',chl),'YRD-040',{mode:'count',name:'Air-cooled chiller 500 tons, free-cooling',loc:'Chiller yard',size:'N+1, magnetic-bearing',glow:'DH1-140',glowCol:'#a8dcff'});
+el(MP([[1.2,300,0,12,150,'x'],[1.2,300,0,14.6,150,'x'],[1.2,32,-140,12,135,'z'],[1.2,32,-140,14.6,135,'z'],[1.2,32,140,12,135,'z'],[1.2,32,140,14.6,135,'z']],'#2a8fd6'),'YRD-050',{mode:'x',name:'CHW supply & return headers 18"',loc:'Yard to CRAH gallery',size:'insulated, on pipe rack'});
+
+/* ---------- DATA HALLS ---------- */
+function hall(id,xa){const xb=xa+150; const P=id;
+  const grid=[]; for(let x=xa+5;x<xb;x+=10) grid.push([0.3,0.3,138,x,14,10]); for(let z=-55;z<78;z+=12) grid.push([146,0.3,0.3,(xa+xb)/2,14,z]);
+  el(MB(grid,'#8a9196'),P+'-020',{mode:'x',zone:'int',name:'Overhead strut support grid',loc:id,size:'Unistrut P1000 on ½" rods'});
+  const sp=[[1,146,(xa+xb)/2,30,-30,'x'],[1,146,(xa+xb)/2,30,40,'x']]; for(let x=xa+10;x<xb;x+=15) sp.push([0.35,138,x,29,10,'z']);
+  el(MP(sp,'#d23a3a'),P+'-030',{mode:'x',zone:'int',name:'Pre-action sprinkler main 4" & branches 1¼"',loc:id,size:'double-interlock'});
+  el(MP([[1.2,146,(xa+xb)/2,22,88,'x'],[1.2,146,(xa+xb)/2,24.8,88,'x']],'#2a8fd6'),P+'-040',{mode:'x',zone:'int',name:'CHW supply & return 12" to CRAHs',loc:id+' gallery'});
+  const cr=[]; for(let i=0;i<10;i++) cr.push([xa+8+i*14.5,0.67,100,0]);
+  el(INST(geoBox(8.5,7,3.2),'#cfd6dc',cr),P+'-050',{mode:'count',zone:'int',name:'CRAH unit 150 kW, EC fans',loc:id+' gallery',glow:P+'-140',glowCol:'#a8dcff'});
+  // rack rows: 6 pairs
+  const racks=[], cont=[], tray=[], lad=[], pdu=[];
+  [-40,-22,-4,14,32,50].forEach(c=>{
+    for(let k=0;k<28;k++){const x=xa+16+k*4.2; racks.push([x,0.67,c-4,0]); racks.push([x,0.67,c+4,0]);}
+    cont.push([118,0.3,8.4,xa+74.5,8,c],[118,1,0.2,xa+74.5,7.6,c-4.1],[118,1,0.2,xa+74.5,7.6,c+4.1]);
+    tray.push([118,0.4,2,xa+74.5,10.5,c-4],[118,0.4,2,xa+74.5,10.5,c+4]);
+    lad.push([118,0.3,1.2,xa+74.5,12,c-6],[118,0.3,1.2,xa+74.5,12,c+6]);
+    pdu.push([xa+8,0.67,c,0]);});
+  el(MB(tray,'#e0a400'),P+'-060',{mode:'x',zone:'int',name:'Power cable tray 24" + busway',loc:id+' rack rows'});
+  el(INST(geoBox(4,7,3),'#7a838a',pdu),P+'-070',{mode:'count',zone:'int',name:'PDU 300 kVA',loc:id+' row ends',glow:P+'-140',glowCol:'#ffe680'});
+  el(MB(lad,'#e2711d'),P+'-080',{mode:'x',zone:'int',name:'Fiber ladder rack 12"',loc:id+' rack rows'});
+  el(MB(cont,'#8e6fc0',{transparent:true,opacity:.85}),P+'-090',{mode:'x',zone:'int',name:'Hot aisle containment (roof + doors)',loc:id+', 6 aisles'});
+  el(INST(geoBox(2,7,4),'#2c3238',racks),P+'-100',{mode:'count',zone:'int',name:'Server rack 48U 600×1200',loc:id,size:'up to 17 kW/rack',glow:P+'-140',glowCol:'#2be08a',gi:0.18});
+  const fa=[]; for(let x=xa+10;x<xb;x+=30) fa.push([0.2,140,x,33,10,'z']);
+  el(MP(fa,'#ff6b6b'),P+'-110',{mode:'x',zone:'int',name:'VESDA sampling pipe + FA devices',loc:id});
+}
+hall('DH1',-150); hall('DH2',0);
+
+/* ---------- ADMIN ---------- */
+const AX0=-210,AX1=-150,AZ0=-50,AZ1=50;
+el(MB([[60,0.6,100,-180,0,0]],'#b8bbb8'),'SHL-030',{mode:'x',zone:'base',name:'Admin slab on grade',loc:'Admin block'});
+const acol=[]; for(let x=AX0;x<=AX1;x+=30) for(let z=AZ0;z<=AZ1;z+=25) acol.push([x,0.6,z,0]);
+el(INST(geoBox(1,30,1),SC,acol),'SHL-040',{mode:'count',zone:'l1',name:'Steel column W10×49',loc:'Admin block'});
+el(MB([[60,0.8,100,-180,14,0],[60,0.5,100,-180,29.5,0]],'#8c949a'),'SHL-050',{mode:'x',zone:'roof',name:'Composite floor deck & roof deck',loc:'Admin block'});
+el(MB([[0.6,30,100,AX0-0.4,0.6,0],[60,30,0.6,-180,0.6,AZ0-0.4],[60,30,0.6,-180,0.6,AZ1+0.4]],'#5d8fa8',{transparent:true,opacity:.6,metalness:.4,roughness:.2}),'SHL-060',{mode:'y',zone:'skin',name:'Unitized curtain wall',loc:'Admin block',size:'insulated glazing, thermally broken'});
+el(MB([[60,0.6,100,-180,30.2,0]],'#eef0ee'),'SHL-070',{mode:'x',zone:'roof',name:'Admin roof membrane',loc:'Admin block'});
+const part=[]; for(let z=AZ0+12;z<AZ1;z+=14) part.push([28,13,0.4,-196,0.6,z]); part.push([0.4,13,100,-182,0.6,0]);
+el(MB(part,'#e6e1d6'),'ADM-010',{mode:'y',zone:'int',name:'Metal-stud partitions + drywall',loc:'Admin L1'});
+el(MB([[56,0.6,96,-180,0.62,0]],'#8f7a5a'),'ADM-030',{mode:'x',zone:'int',name:'Floor finishes (LVT / carpet tile)',loc:'Admin L1'});
+const desks=[]; for(let i=0;i<6;i++) desks.push([-170+(i%3)*8,0.6,-20+Math.floor(i/3)*10,0]);
+el(INST(geoBox(6,3,3),'#3a4148',desks),'ADM-040',{mode:'count',zone:'int',name:'NOC console + video wall',loc:'Admin L1',glow:'MS-990',glowCol:'#8fd3ff'});
+
+/* ---------- labels ---------- */
+const LAB=[{id:'SITE',t:'Site',p:[-330,30,-160]},{id:'SHELL',t:'Shell',p:[190,50,95]},{id:'DH1',t:'DH1',p:[-75,48,35]},{id:'DH2',t:'DH2',p:[75,48,35]},
+  {id:'ELEC',t:'Power',p:[290,30,-100]},{id:'YARD',t:'Yards',p:[60,26,185]},{id:'ADMIN',t:'Admin',p:[-180,38,-40]}];
+const labelsEl=document.getElementById('labels'); let showLabels=true;
+LAB.forEach(L=>{const d=document.createElement('button'); d.className='lab'; d.type='button'; d.innerHTML=`<b>${L.t}</b><i></i>`; d.onclick=()=>fly(new THREE.Vector3(...L.p),L.id); labelsEl.appendChild(d); L.el=d; L.v=new THREE.Vector3(...L.p);});
+function areaPct(ar,T){let tot=0,done=0; DATA.areas[ar].forEach(r=>{const a=ACT[r[3]]; if(a.ms) return; tot+=a.dur; done+=a.dur*fr(a.code,T);}); return tot?done/tot:0;}
+function areaPhase(ar,T){const run=DATA.areas[ar].map(r=>ACT[r[3]]).filter(a=>{const g=fr(a.code,T);return g>0&&g<1;}); if(run.length) return run[run.length-1].name.replace(/^DH\d — /,''); const p=areaPct(ar,T); if(p>=1) return 'Complete'; const nx=DATA.areas[ar].map(r=>ACT[r[3]]).filter(a=>!a.ms&&fr(a.code,T)===0).sort((a,b)=>a.s-b.s)[0]; return nx?('Next: '+nx.name.replace(/^DH\d — /,'')):'—';}
+
+/* ---------- camera views ---------- */
+let anim=null;
+function camTo(pos,tgt,ms=900){const p0=camera.position.clone(),t0=controls.target.clone(),st=performance.now();
+  anim=()=>{const k=Math.min(1,(performance.now()-st)/ms), e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2; camera.position.lerpVectors(p0,pos,e); controls.target.lerpVectors(t0,tgt,e); if(k>=1) anim=null;};}
+function fly(v){camTo(new THREE.Vector3(v.x+160,v.y+120,v.z+190),new THREE.Vector3(v.x,8,v.z));}
+const VIEWS={site:[[-420,330,440],[0,0,0]],plan:[[0,980,1],[0,0,0]],hall:[[-146,6.5,-13],[0,4,-13]]};
+function setView(k){const [p,t]=VIEWS[k]; camTo(new THREE.Vector3(...p),new THREE.Vector3(...t));
+  if(k==='hall'){setVmode('roof');}}
+camera.position.set(...VIEWS.site[0]); controls.target.set(0,0,0);
+
+/* ---------- UI ---------- */
+const $=id=>document.getElementById(id);
+const slider=$('slider'); slider.max=END;
+function setVmode(v){vmode=v; document.querySelectorAll('[data-vm]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.vm===v)); render(true);}
+document.querySelectorAll('[data-vm]').forEach(b=>b.onclick=()=>setVmode(b.dataset.vm));
+$('vSite').onclick=()=>setView('site'); $('vPlan').onclick=()=>setView('plan'); $('vHall').onclick=()=>setView('hall');
+$('vLab').onclick=e=>{showLabels=!showLabels; e.currentTarget.setAttribute('aria-pressed',showLabels); labelsEl.hidden=!showLabels;};
+$('vCrit').onclick=e=>{critMode=!critMode; e.currentTarget.setAttribute('aria-pressed',critMode); $('critBox').hidden=!critMode; render(true);};
+let playing=false,last=0;
+$('play').onclick=()=>{playing=!playing; if(playing&&T>=END) T=0; $('play').textContent=playing?'❚❚ Pause':'▶ Play'; last=performance.now();};
+$('jStart').onclick=()=>setT(0); $('jToday').onclick=()=>setT(TODAY); $('jEnd').onclick=()=>setT(END);
+slider.oninput=()=>setT(+slider.value);
+
+const tradesEl=$('trades'), TR=Object.keys(DATA.trades).filter(k=>k!=='MS');
+TR.forEach(k=>{const b=document.createElement('button'); b.className='trade'; b.type='button'; b.dataset.t=k; b.setAttribute('aria-pressed','false');
+  b.innerHTML=`<span class="sw" style="background:${TC[k]}"></span>${DATA.trades[k]}<em></em>`;
+  b.onclick=()=>{iso=iso===k?null:k; tradesEl.querySelectorAll('.trade').forEach(x=>x.setAttribute('aria-pressed',x.dataset.t===iso)); render(true);};
+  tradesEl.appendChild(b);});
+
+function setT(v){T=clamp(v,0,END); render(true);}
+let lastUI=-1;
+function updateUI(){const t=Math.round(T); slider.value=t;
+  $('dLbl').textContent=fmt(dOf(t)); $('dSub').textContent=`NTP + ${t} d · data date ${fmt(dOf(TODAY))}`;
+  let tot=0,done=0,run=[],critRun=[],critNext=[];
+  Object.values(ACT).forEach(a=>{if(a.ms) return; const g=fr(a.code,T); tot+=a.dur; done+=a.dur*g; if(g>0&&g<1) run.push([a,g]);});
+  Object.values(ACT).forEach(a=>{if(!a.crit) return; const g=fr(a.code,T); if(g>0&&g<1) critRun.push(a); else if(g===0) critNext.push(a);});
+  const pct=done/tot, ms=Object.values(ACT).filter(a=>a.ms&&a.s<=T).length, msT=Object.values(ACT).filter(a=>a.ms).length;
+  const rfs=['DH1','DH2'].filter(h=>fr(h+'-140',T)>=1).length;
+  $('kpis').innerHTML=`<div class="kpi wide"><b>${(pct*100).toFixed(1)}%</b><span>complete, duration-weighted</span><div class="bar"><i style="width:${pct*100}%"></i></div></div>
+    <div class="kpi"><b>${run.length}</b><span>activities in progress</span></div><div class="kpi"><b>${run.filter(r=>r[0].crit).length}</b><span>critical in progress</span></div>
+    <div class="kpi"><b>${ms}/${msT}</b><span>milestones reached</span></div><div class="kpi"><b>${rfs}/2</b><span>halls ready for service</span></div>`;
+  $('areas').innerHTML=DATA.order.map(ar=>{const p=areaPct(ar,T); return `<div class="arow"><span>${DATA.names[ar]}</span><span>${Math.round(p*100)}%</span><div class="bar"><i style="width:${p*100}%;background:${p>=1?'var(--ok)':'var(--accent)'}"></i></div></div>`;}).join('');
+  run.sort((a,b)=>b[0].crit-a[0].crit||a[0].e-b[0].e);
+  $('wip').innerHTML=run.slice(0,9).map(([a,g])=>`<div class="${a.crit?'c':''}"><span>${a.name}</span><code>${a.code}</code><small><i style="width:${g*100}%"></i></small></div>`).join('')||'<div><span style="color:var(--muted)">Nothing in progress on this date.</span></div>';
+  tradesEl.querySelectorAll('.trade').forEach(b=>{b.querySelector('em').textContent=run.filter(r=>r[0].trade===b.dataset.t).length||'';});
+  critNext.sort((a,b)=>a.s-b.s);
+  $('critList').innerHTML=[...critRun.map(a=>`<div class="c"><span><b>Now:</b> ${a.name}</span><code>${a.code}</code><span style="grid-column:1/-1;color:var(--muted);font-size:11px">${fmt(dOf(a.s))} → ${fmt(dOf(a.e))} · TF ${a.tf} d</span></div>`),
+    ...critNext.slice(0,3).map(a=>`<div class="c"><span>Next: ${a.name}</span><code>${a.code}</code><span style="grid-column:1/-1;color:var(--muted);font-size:11px">starts ${fmt(dOf(a.s))} · TF ${a.tf} d</span></div>`)].join('')||'<div><span>Critical path complete.</span></div>';
+  LAB.forEach(L=>{const ar=L.id; const p=areaPct(ar,T); L.el.querySelector('i').textContent=`${Math.round(p*100)}% · ${areaPhase(ar,T)}`;});
+  drawGantt();}
+
+/* ---------- gantt ---------- */
+const gc=$('gantt'), gx2=gc.getContext('2d');
+function drawGantt(){const W=gc.clientWidth,Hh=gc.clientHeight,dpr=Math.min(2,window.devicePixelRatio||1); if(!W) return;
+  if(gc.width!==W*dpr){gc.width=W*dpr; gc.height=Hh*dpr;} gx2.setTransform(dpr,0,0,dpr,0,0); gx2.clearRect(0,0,W,Hh);
+  const LW=Math.min(150,W*0.28), rows=DATA.order, rh=(Hh-18)/rows.length, sx=d=>LW+(W-LW-8)*d/END;
+  const fg=css('--fg'),mu=css('--muted'),li=css('--line'),bar=css('--bar'),ac=css('--accent'),cr=css('--crit');
+  gx2.font='11px "IBM Plex Sans", sans-serif'; gx2.textBaseline='middle';
+  // month ticks
+  gx2.fillStyle=mu; for(let m=0;m<20;m++){const d=new Date(D0.getFullYear(),D0.getMonth()+m,1); const n=(d-D0)/864e5; if(n<0||n>END) continue;
+    gx2.fillRect(sx(n),0,1,Hh-14); if(m%2===0) gx2.fillText(d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}),sx(n)+2,Hh-7);}
+  rows.forEach((ar,i)=>{const y=i*rh; gx2.fillStyle=i%2?'rgba(127,127,127,.06)':'transparent'; gx2.fillRect(0,y,W,rh);
+    gx2.fillStyle=fg; gx2.fillText(DATA.names[ar],6,y+rh/2,LW-10);
+    DATA.areas[ar].forEach(r=>{const a=ACT[r[3]]; const x0=sx(a.s),x1=Math.max(sx(a.e),x0+2);
+      if(a.ms){gx2.fillStyle=a.crit&&critMode?cr:fg; gx2.beginPath(); gx2.moveTo(x0,y+rh/2-4);gx2.lineTo(x0+4,y+rh/2);gx2.lineTo(x0,y+rh/2+4);gx2.lineTo(x0-4,y+rh/2);gx2.fill(); return;}
+      gx2.fillStyle=critMode&&a.crit?cr:bar; gx2.globalAlpha=.45; gx2.fillRect(x0,y+rh*.3,x1-x0,rh*.4);
+      const g=fr(a.code,T); if(g>0){gx2.globalAlpha=1; gx2.fillStyle=critMode&&a.crit?cr:TC[a.trade]; gx2.fillRect(x0,y+rh*.3,(x1-x0)*g,rh*.4);} gx2.globalAlpha=1;});});
+  gx2.fillStyle=ac; gx2.fillRect(sx(TODAY)-1,0,2,Hh-14);
+  gx2.fillStyle=fg; gx2.fillRect(sx(T)-1,0,2,Hh-14); gx2.beginPath(); gx2.moveTo(sx(T)-5,0);gx2.lineTo(sx(T)+5,0);gx2.lineTo(sx(T),6);gx2.fill();
+  drawGantt.sx=sx; drawGantt.LW=LW;}
+function ganttPick(e){const r=gc.getBoundingClientRect(), x=e.clientX-r.left; if(x<drawGantt.LW) return; const W=r.width; setT(Math.round((x-drawGantt.LW)/(W-drawGantt.LW-8)*END));}
+let gdrag=false; gc.addEventListener('pointerdown',e=>{gdrag=true; ganttPick(e);}); window.addEventListener('pointermove',e=>{if(gdrag) ganttPick(e);}); window.addEventListener('pointerup',()=>gdrag=false);
+
+/* ---------- inspector ---------- */
+const ray=new THREE.Raycaster(), mouse=new THREE.Vector2(), insp=$('insp'); let helper=null, downAt=null;
+canvas.addEventListener('pointerdown',e=>downAt=[e.clientX,e.clientY]);
+canvas.addEventListener('pointerup',e=>{if(!downAt||Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])>5) return; pick(e);});
+function pick(e){const r=canvas.getBoundingClientRect(); mouse.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1); ray.setFromCamera(mouse,camera);
+  const objs=EL.filter(x=>x.obj.visible&&!x.obj.userData.ghost&&x.mode!=='remove').map(x=>x.obj);
+  const hits=ray.intersectObjects(objs,false).filter(h=>{const rc=h.object.userData.rec; if(!rc.plane) return true; return rc.plane.distanceToPoint(h.point)>=-0.01;});
+  if(helper){scene.remove(helper); helper=null;}
+  if(!hits.length){insp.hidden=true; return;}
+  const h=hits[0], rc=h.object.userData.rec; const bb=new THREE.Box3();
+  if(h.object.isInstancedMesh&&h.instanceId!=null){const M=new THREE.Matrix4(); h.object.getMatrixAt(h.instanceId,M); h.object.geometry.computeBoundingBox(); bb.copy(h.object.geometry.boundingBox).applyMatrix4(M);}
+  else {h.object.geometry.computeBoundingBox(); bb.copy(h.object.geometry.boundingBox);}
+  helper=new THREE.Box3Helper(bb,new THREE.Color(css('--accent'))); scene.add(helper);
+  const g=fr(rc.codes[0],T,rc.subf), st=g<=0?'Not started':g>=1?'Complete':`In progress · ${Math.round(g*100)}%`;
+  const inst=h.object.isInstancedMesh?` · item ${h.instanceId+1} of ${h.object.userData.pos.length}`:'';
+  const codes=[...new Set([...rc.codes,...(rc.st||[]).map(s=>s[0]),...(rc.glow?[rc.glow]:[])])];
+  insp.innerHTML=`<button class="x" aria-label="Close">×</button><h3>${rc.name}</h3>
+    <dl class="kv"><dt>Location</dt><dd>${rc.loc}${inst}</dd><dt>Trade</dt><dd><span class="sw" style="display:inline-block;vertical-align:-1px;background:${TC[rc.trade]}"></span> ${DATA.trades[rc.trade]}</dd>
+    ${rc.size?`<dt>Spec</dt><dd>${rc.size}</dd>`:''}<dt>Status</dt><dd>${st}</dd><dt>Critical</dt><dd>${rc.crit?'<b style="color:var(--crit)">Yes</b>':'No'}</dd>
+    <dt>Source</dt><dd>${rc.sheet}</dd><dt>LOD</dt><dd>350 · located, sized, connections & supports shown</dd></dl>
+    <div class="acts">${codes.map(c=>{const a=ACT[c]; return `<div class="${a.crit?'c':''}"><code>${c}</code> ${a.name}<br><span style="color:var(--muted)">${fmt(dOf(a.s))} → ${fmt(dOf(a.e))} · ${a.dur} d · TF ${a.tf} d</span></div>`;}).join('')}</div>`;
+  insp.hidden=false; insp.querySelector('.x').onclick=()=>{insp.hidden=true; if(helper){scene.remove(helper);helper=null;}};}
+
+/* ---------- loop ---------- */
+function resize(){const w=stage.clientWidth,h=stage.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); drawGantt();}
+window.addEventListener('resize',resize);
+let dirty=true; function render(d){if(d) dirty=true;}
+const tmpV=new THREE.Vector3();
+function loop(now){requestAnimationFrame(loop);
+  if(playing){const dt=(now-last)/1000; last=now; T+=dt*(+$('speed').value); if(T>=END){T=END; playing=false; $('play').textContent='▶ Play';} dirty=true;}
+  if(anim) anim();
+  controls.update();
+  if(dirty){applyEL(T); const t=Math.round(T); if(t!==lastUI||!playing){updateUI(); lastUI=t;} dirty=false;}
+  renderer.render(scene,camera);
+  if(showLabels){const w=stage.clientWidth,h=stage.clientHeight; LAB.forEach(L=>{tmpV.copy(L.v).project(camera); const vis=tmpV.z<1&&Math.abs(tmpV.x)<1.05&&Math.abs(tmpV.y)<1.05; L.el.hidden=!vis; if(vis){L.el.style.left=((tmpV.x+1)/2*w)+'px'; L.el.style.top=((1-tmpV.y)/2*h)+'px';}});}
+}
+const mq=window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener&&mq.addEventListener('change',()=>{applyTheme();render(true);});
+new MutationObserver(()=>{applyTheme();render(true);}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+resize(); applyTheme(); render(true); requestAnimationFrame(loop);
+window.__set=(t,opt={})=>{T=t; if(opt.view) {const [p,tg]=VIEWS[opt.view]; camera.position.set(...p); controls.target.set(...tg);} if(opt.vm) setVmode(opt.vm); if(opt.crit!=null){critMode=opt.crit; $('critBox').hidden=!critMode;} if(opt.iso!==undefined) iso=opt.iso; if(opt.cam){camera.position.set(...opt.cam[0]); controls.target.set(...opt.cam[1]);} render(true);};
+window.__sun=sun;window.__play=(speed)=>{$('speed').value=String(speed||30); if(!playing) $('play').click();};
+})();
+
+</script>
+</body></html>
